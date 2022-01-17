@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 from email import header
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import udf
+from pyspark.sql.types import DateType
 import pandas as pd
 import os
 import configparser
@@ -56,74 +58,22 @@ def process_immigration_data(spark, input_data, output_data):
     """
     # fetch path fo data source
     immigration_data = os.path.join(
-        input_data + "immigration/18-83510-I94-Data-2016/*.sas7bdat"
+        input_data + "sas_data"
     )
 
     # load data
-    immigration_df = spark.read.format("com.github.saurfang.sas.spark").load(immigration_data)
+    immigration_df = spark.read.parquet(immigration_data)
     immigration_df.take(10)
 
     # select columns to work with
-    immigration_df = immigration_df.select(
-        [
-            "cicid",
-            "i94yr",
-            "i94mon",
-            "i94cit",
-            "i94res",
-            "i94port",
-            "arrdate",
-            "i94mode",
-            "i94addr",
-            "depdate",
-            "i94bir",
-            "i94visa",
-            "count",
-            "dtadfile",
-            "visapost",
-            "occup",
-            "entdepa",
-            "entdepd",
-            "entdepu",
-            "matflag",
-            "biryear",
-            "dtaddto",
-            "gender",
-            "insnum",
-            "airline",
-            "admnum",
-            "fltno",
-            "visatype",
-        ]
-    )
+    immigration_df = immigration_df.select("*")
     # rename columns to make them inteligible
-    immigration_df = immigration_df.rename(
-        columns={
-            "cicid": "cic_id",
-            "i94yr": "year",
-            "i94mon": "month",
-            "i94cit": "cit",
-            "i94port": "port",
-            "arrdate": "arrival_date",
-            "i94mode": "mode",
-            "i94addr": "address",
-            "depdate": "departure_date",
-            "i94bir": "age",
-            "i94visa": "visa",
-            "dtadfile": "date_logged",
-            "occup": "occupation",
-            "entdepa": "arrival_flag",
-            "entdepd": "departure_flag",
-            "entdepu": "update_flag",
-            "matflag": "match_flag",
-            "biryear": "birth_year",
-            "dtaddto": "max_stay_date",
-            "insnum": "INS_number",
-            "admnnum": "admission_number",
-            "fltno": "flight_number",
-            "i94res": "res",
-        }
-    )
+    new_cols =["cic_id","year","month","cit","res","port","arrival_date","mode","address","departure_date","age","visa","count","date_logged","dept_visa_issuance","occupation","arrival_flag","departure_flag","update_flag","match_flag","birth_year","max_stay_date","gender","INS_number","airline","admission_number","flight_number","visatype"]
+    #create an iterator between the current df columns and new columns to bulk rename the columns in 
+    #immigration_df
+    for col, new_col in zip(immigration_df.columns, new_cols):
+        immigration_df = immigration_df.withColumnRenamed(col, new_col) 
+
 
     immigration_fact = immigration_df[
         [
@@ -137,12 +87,10 @@ def process_immigration_data(spark, input_data, output_data):
         ]
     ]
     # clean the dates
-    immigration_fact["arrival_date"] = immigration_fact.arrival_date.apply(
-        lambda x: sas_to_date(x)
-    )
-    immigration_fact["departure_date"] = immigration_fact.departure_date.apply(
-        lambda x: sas_to_date(x)
-    )
+    udf_func = udf(sas_to_date,DateType())
+    immigration_fact = immigration_fact.withColumn("arrival_date",udf_func("arrival_date"))
+    immigration_fact = immigration_fact.withColumn("departure_date",udf_func("departure_date"))
+    print(immigration_fact)
 
     immigration_fact.write.parquet(output_data + "immigration_fact.parquet")
 
