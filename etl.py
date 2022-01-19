@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 from email import header
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf
-from pyspark.sql.types import DateType
+from pyspark.sql.functions import udf,col, array_contains
+from pyspark.sql.types import DateType, StringType
 import pandas as pd
 import os
 import configparser
@@ -14,14 +14,10 @@ os.environ['AWS_ACCESS_KEY_ID']=config['aws_cred']['AWS_ACCESS_KEY_ID']
 os.environ['AWS_SECRET_ACCESS_KEY']=config['aws_cred']['AWS_SECRET_ACCESS_KEY']
 
 def createsparksession():
-    spark = (
-        SparkSession.builder.config(
-            "spark.jars.repositories", "https://repos.spark-packages.org/"
-        )
-        .config("spark.jars.packages", "saurfang:spark-sas7bdat:2.0.0-s_2.11")
-        .enableHiveSupport()
-        .getOrCreate()
-    )
+    spark = SparkSession.builder\
+        .config("spark.jars.repositories", "https://repos.spark-packages.org/")\
+        .config("spark.jars.packages", "org.apache.hadoop:hadoop-aws:2.7.0,saurfang:spark-sas7bdat:2.0.0-s_2.11")\
+        .enableHiveSupport().getOrCreate()
 
     return spark
 
@@ -41,13 +37,17 @@ def sas_to_date(date):
     )
 
 
+
 def check_missing_data(df):
     """
     Takes dataframe and checks for existence of USA temperature data
     """
-    us_array = ["usa", "united states of america", "us"]
-    df["Country"] = df.Country.apply(lambda x: x.lower())
-    return df.Country.isin(us_array).unique()
+    lower_case = udf(lambda x: x.lower())
+    df = df.withColumn("Country",lower_case(col("Country")))
+    df3 = df.filter(df.Country == "usa")
+    df3 = df.filter(df.Country =="united states of america")
+    df3 = df.filter(df.Country == "us")
+    return (True if not df3 else False)
 
 
 def process_immigration_data(spark, input_data, output_data):
@@ -63,7 +63,6 @@ def process_immigration_data(spark, input_data, output_data):
 
     # load data
     immigration_df = spark.read.parquet(immigration_data)
-    immigration_df.take(10)
 
     # select columns to work with
     immigration_df = immigration_df.select("*")
@@ -90,7 +89,6 @@ def process_immigration_data(spark, input_data, output_data):
     udf_func = udf(sas_to_date,DateType())
     immigration_fact = immigration_fact.withColumn("arrival_date",udf_func("arrival_date"))
     immigration_fact = immigration_fact.withColumn("departure_date",udf_func("departure_date"))
-    print(immigration_fact)
 
     immigration_fact.write.parquet(output_data + "immigration_fact.parquet")
 
@@ -140,27 +138,14 @@ def process_airport_data(spark, input_data, output_data):
     # fetch data source
     airport_data = os.path.join(input_data + "airport-codes_csv.csv")
     # load data
-    airport_df = spark.read.load(airport_data, sep=";", format="csv", header=True)
-
-    airport_df = airport_df.select(
-        [
-            "ident",
-            "type",
-            "name",
-            "continent",
-            "gps_code",
-            "iata_code",
-            "local_code",
-            "iso_country",
-            "type",
-        ]
-    )
-    airport_df = airport_df[
+    airport_df = spark.read.csv(airport_data, header=True)
+    airport_df = airport_df.filter(
         (airport_df.iso_country == "US") & ~(airport_df.type == "closed")
-    ]
-    airport_stats = airport_df[["ident", "elevation_ft", "coordinates"]]
+    )
+    airport_dim = airport_df.select(["ident","type","name","continent","gps_code","iata_code","local_code","iso_country"])
+    airport_stats = airport_df.select(["ident", "elevation_ft", "coordinates"])
 
-    airport_df.write.parquet(output_data + "airports.parquet")
+    airport_dim.write.parquet(output_data + "airports.parquet")
     airport_stats.write.parquet(output_data + "airports.stats")
 
 
@@ -175,9 +160,9 @@ def process_temp_data(spark, input_data, output_data):
     temp_data = os.path.join(
         input_data + "../../data2/GlobalLandTemperaturesByCity.csv"
     )
-    temp_df = spark.read.load(temp_data, sep=";", header=True)
-
-    temp_df = check_missing_data(temp_df)
+    temp_df = spark.read.csv(temp_data,header=True)
+    print(temp_df.schema.names)
+    check_missing_data(temp_df)
 
 
 def main():
