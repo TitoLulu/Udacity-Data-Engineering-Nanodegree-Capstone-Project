@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from email import header
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf,col, array_contains
+from pyspark.sql.functions import udf,col, array_contains, split
 from pyspark.sql.types import DateType, StringType
 import pandas as pd
 import os
@@ -49,6 +49,22 @@ def check_missing_data(df):
     df3 = df.filter(df.Country == "us")
     return (True if not df3 else False)
 
+def read_labels(file, first_row,last_row):
+    frame = {}
+    frame2 = {}
+    print(first_row)
+    with open(file) as f:
+        file_content = f.readlines()
+        
+        for content in file_content[first_row:last_row]:
+            content = content.split("=")
+            if first_row ==  303:
+                code, cont= content[0].strip("\t").strip().strip("'"),content[1].strip("\t").strip().strip("''")
+            else:
+                code, cont = content[0].strip(),content[1].strip().strip("'")
+            frame[code] =cont
+    return frame
+
 
 def process_immigration_data(spark, input_data, output_data):
     """
@@ -89,7 +105,18 @@ def process_immigration_data(spark, input_data, output_data):
     udf_func = udf(sas_to_date,DateType())
     immigration_fact = immigration_fact.withColumn("arrival_date",udf_func("arrival_date"))
     immigration_fact = immigration_fact.withColumn("departure_date",udf_func("departure_date"))
-
+    file = os.path.join(input_data + "I94_SAS_Labels_Descriptions.SAS")
+    countries = read_labels(file, first_row=10, last_row=298)
+    cities = read_labels(file,first_row=303,last_row=962)
+    countries_df = spark.createDataFrame(countries.items(), ['code', 'country'])
+    cities_df = spark.createDataFrame(cities.items(), ['code', 'city'])
+#     cities_df = cities_df.select(split(cities_df.city, ',')).rdd.flatMap(
+#               lambda x: x).toDF(schema=["city","state"])
+#     cities_df.show()
+#     #cities_df = cities_df.withColumn('city', city_state[0])
+#     #cities_df = cities_df.withColumn('state', city_state[1])
+    dim_countries.write.parquet(output_data + "dim_countries.parquet")
+    dim_citites.write.parquet(output_data + "dim_cities.parquet")
     immigration_fact.write.parquet(output_data + "immigration_fact.parquet")
 
 
@@ -163,7 +190,7 @@ def process_temp_data(spark, input_data, output_data):
     temp_df = spark.read.csv(temp_data,header=True)
     print(temp_df.schema.names)
     check_missing_data(temp_df)
-
+    
 
 def main():
     input_data = "s3a://udacity-dend/"
