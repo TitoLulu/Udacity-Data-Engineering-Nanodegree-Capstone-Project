@@ -32,5 +32,12 @@ The clean up process involves dropping duplicate rows, reading sas labels files 
 
 In a production environment I would inlude a workflow management tool such as airflow to schedule the frequency of DAGs jobs. Assuming it is batch pipeline I would schedule it on a daily to run at 12:00 AM UTC time so as to capture previous days activity data. I would also include redshift warehouse for warehousing allowing analysts to further perform their analysis by either directly querying views or doing that over a BI tool set on top of the warehouse
 
+# Reference
+[ref #1](https://sparkbyexamples.com/pyspark/pyspark-split-dataframe-column-into-multiple-columns/):**PySpark split() Column into Multiple Columns**
+
+[ref #2](https://changhsinlee.com/pyspark-udf/):**How to Turn Python Functions into PySpark Functions (UDF)**
+
+[ref #3](https://realpython.com/python-zip-function/):**ZIP Function**
+
 
 
