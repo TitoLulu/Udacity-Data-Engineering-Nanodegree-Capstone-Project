@@ -1,0 +1,54 @@
+﻿fact immigration,,,,,dim city demographics,,
+Field,Description,Data Type,,,Field,Description,Data Type
+cic_id,primary key,double,,,city,name of city ,string
+year,year of arrival in USA,double,,,state,name of state,string
+month,month of arrival in USA,double,,,State Code,2 letter state code,string
+arrival_date,date of arrival in USA,date,,,Male Population,total male population ,string
+departure_date,date of departure from USA,date,,,Female Population,total female population,string
+mode,mode of arrival in USA,double,,,Foreign-born,number of foreign born ,string
+visatype,visatype of arrival in USA,string,,,Number of Veterans,number of veterans,string
+,,,,,Race,population size by race,string
+dim immigrant,,,,,,,
+Field,Description ,Data Type,,,dim city stats,,
+id,primary key monoatomically increasing,double,,,Field,Description,Data Type
+cic_id,Foreign key to relation fact_immigration,double,,,city,name of city,string
+cit,3 digit visitor country of birth; FK in dim_country_code,double ,,,state code,2 letter state code,string
+res,3 digit visitor country of residence; FK in dim_country_codes,double,,,median age,age that divides city population into two equal parts (above/below),string
+visa,visatype,double,,,Average Household Size,average number of people in a single household,string
+age,age of immigrant,double,,,Count,total pipulation of the city,string
+occupation,occupation of immigrant in the USA,string,,,,,
+gender,sex of immigrant,string,,,,,
+address,state,string,,,dim airports,,
+INS_number,INS number,string,,,Field,Description,Data Type
+dim_flight_details,,,,,ident,primary key,string
+Field,Description ,Data Type,,,type,category airport belongs to ,string
+id,primary key,double,,,name,airport name,string
+cic_id,Foreign key to relation fact_immigration,double,,,continent,continent airport is located ,string
+flight_number,flight number,strin ,,,gps_code,"longitude, latitude coordinates",string
+airline,airline immigrant arrived in,string,,,iata_code,international air transport association airport code,string
+,,,,,iso_country,country airport is located,string
+,,,,,,,
+,,,,,dim airport stats,,
+,,,,,Field,Description,Data Type
+,,,,,ident,primary key,string
+,,,,,elevation_ft,height above a fixed reference point,string
+,,,,,coordinates,"longitude, latitude coordinates",string
+,,,,,,,
+,,,,,,,
+,,,,,,,
+,,,,,,,
+dim city codes,,,,,,,
+Field ,Description,Data Type,,,,,
+id,primary key,long,,,,,
+city,city name,string,,,,,
+code,3 letter code,string,,,,,
+state,state city is located in,string,,,,,
+,,,,,,,
+,,,,,,,
+dim country codes,,,,,,,
+Field,Desciption,Data Type,,,,,
+id,primary key,long,,,,,
+code,two/three letter code,string ,,,,,
+country,country name,string ,,,,,
+,,,,,,,
+,,,,,,,

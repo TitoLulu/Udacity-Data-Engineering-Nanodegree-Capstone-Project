@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from email import header
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import udf,col, array_contains, split
+from pyspark.sql.functions import udf,col, array_contains, split, monotonically_increasing_id,year, month, dayofmonth, hour, weekofyear, date_format, dayofweek
 from pyspark.sql.types import DateType, StringType
 import pandas as pd
 import os
@@ -101,6 +101,9 @@ def process_immigration_data(spark, input_data, output_data):
             "visatype",
         ]
     ].dropDuplicates()
+    # dimensions from immigration data
+    dim_flight_details = immigration_df.select([monotonically_increasing_id().alias('id'),'cic_id','flight_number','airline'])
+    dim_immigrants = immigration_df.select([monotonically_increasing_id().alias('id'),'cic_id','cit','res','visa','age','occupation','gender','address','INS_number'])
     # clean the dates
     udf_func = udf(sas_to_date,DateType())
     immigration_fact = immigration_fact.withColumn("arrival_date",udf_func("arrival_date"))
@@ -112,9 +115,15 @@ def process_immigration_data(spark, input_data, output_data):
     cities_df = spark.createDataFrame(cities.items(), ['code', 'city']).dropDuplicates()
     cities_df = cities_df.withColumn('state', split(cities_df.city,',').getItem(1))\
             .withColumn('city', split(cities_df.city,',').getItem(0))
+    cities_df = cities_df.select([monotonically_increasing_id().alias('id'),'*'])
+    countries_df = countries_df.select([monotonically_increasing_id().alias('id'),'*'])
+    
+    # write results to S3
     countries_df.write.parquet(output_data + "dim_countries.parquet")
     cities_df.write.parquet(output_data + "dim_cities.parquet")
     immigration_fact.write.parquet(output_data + "fact_immigration.parquet")
+    dim_immigrants.write.parquet(output_data + "dim_immigrants.parquet")
+    dim_flight_details.write.parquet(output_data + "dim_flight_details.parquet")
 
 
 def process_city_data(spark, input_data, output_data):
