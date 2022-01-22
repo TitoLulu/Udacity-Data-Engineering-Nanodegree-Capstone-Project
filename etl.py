@@ -100,7 +100,7 @@ def process_immigration_data(spark, input_data, output_data):
             "mode",
             "visatype",
         ]
-    ]
+    ].dropDuplicates()
     # clean the dates
     udf_func = udf(sas_to_date,DateType())
     immigration_fact = immigration_fact.withColumn("arrival_date",udf_func("arrival_date"))
@@ -108,16 +108,13 @@ def process_immigration_data(spark, input_data, output_data):
     file = os.path.join(input_data + "I94_SAS_Labels_Descriptions.SAS")
     countries = read_labels(file, first_row=10, last_row=298)
     cities = read_labels(file,first_row=303,last_row=962)
-    countries_df = spark.createDataFrame(countries.items(), ['code', 'country'])
-    cities_df = spark.createDataFrame(cities.items(), ['code', 'city'])
-#     cities_df = cities_df.select(split(cities_df.city, ',')).rdd.flatMap(
-#               lambda x: x).toDF(schema=["city","state"])
-#     cities_df.show()
-#     #cities_df = cities_df.withColumn('city', city_state[0])
-#     #cities_df = cities_df.withColumn('state', city_state[1])
-    dim_countries.write.parquet(output_data + "dim_countries.parquet")
-    dim_citites.write.parquet(output_data + "dim_cities.parquet")
-    immigration_fact.write.parquet(output_data + "immigration_fact.parquet")
+    countries_df = spark.createDataFrame(countries.items(), ['code', 'country']).dropDuplicates()
+    cities_df = spark.createDataFrame(cities.items(), ['code', 'city']).dropDuplicates()
+    cities_df = cities_df.withColumn('state', split(cities_df.city,',').getItem(1))\
+            .withColumn('city', split(cities_df.city,',').getItem(0))
+    countries_df.write.parquet(output_data + "dim_countries.parquet")
+    cities_df.write.parquet(output_data + "dim_cities.parquet")
+    immigration_fact.write.parquet(output_data + "fact_immigration.parquet")
 
 
 def process_city_data(spark, input_data, output_data):
@@ -145,14 +142,14 @@ def process_city_data(spark, input_data, output_data):
             "Number of Veterans",
             "Race",
         ]
-    )
-    city_demography.write.parquet(output_data + city_demography)
+    ).dropDuplicates()
+    city_demography.write.parquet(output_data + "city_demography.parquet")
 
     # statistics on city such as total population, and median age
     city_stats = city_df.select(
         ["City", "State Code", "Median Age", "Average Household Size", "Count"]
-    )
-    city_stats.write.parquet(output_data + "city_stats.parquet")
+    ).dropDuplicates()
+    city_stats.write.mode('overwrite').parquet(output_data + "city_stats.parquet")
 
 
 def process_airport_data(spark, input_data, output_data):
@@ -169,11 +166,11 @@ def process_airport_data(spark, input_data, output_data):
     airport_df = airport_df.filter(
         (airport_df.iso_country == "US") & ~(airport_df.type == "closed")
     )
-    airport_dim = airport_df.select(["ident","type","name","continent","gps_code","iata_code","local_code","iso_country"])
-    airport_stats = airport_df.select(["ident", "elevation_ft", "coordinates"])
+    airport_dim = airport_df.select(["ident","type","name","continent","gps_code","iata_code","local_code","iso_country"]).dropDuplicates()
+    airport_stats = airport_df.select(["ident", "elevation_ft", "coordinates"]).dropDuplicates()
 
-    airport_dim.write.parquet(output_data + "airports.parquet")
-    airport_stats.write.parquet(output_data + "airports.stats")
+    airport_dim.write.parquet(output_data + "airports_dim.parquet")
+    airport_stats.write.parquet(output_data + "airports_stats.parquet")
 
 
 def process_temp_data(spark, input_data, output_data):
@@ -187,9 +184,11 @@ def process_temp_data(spark, input_data, output_data):
     temp_data = os.path.join(
         input_data + "../../data2/GlobalLandTemperaturesByCity.csv"
     )
-    temp_df = spark.read.csv(temp_data,header=True)
-    print(temp_df.schema.names)
-    check_missing_data(temp_df)
+    temp_df = spark.read.csv(temp_data,header=True).dropDuplicates()
+    x = check_missing_data(temp_df)
+    if x == False:
+        print("Data for USA Missing")
+    temp_df.write.parquet(output_data, 'dim_temperature.parquet')
     
 
 def main():
