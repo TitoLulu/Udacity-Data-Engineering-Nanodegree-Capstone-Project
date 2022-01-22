@@ -18,7 +18,26 @@ Build an Amazon S3 hosted data lake and ETL pipeline that loads data from S3, pr
 
 The conceptual data model is that of a star schema comprising a central fact table immigration_fact and auxiliary dimension  tables 
 
-![alt text](https://github.com/TitoLulu/Udacity-Data-Engineering-Nanodegree-Capstone-Project/images/conceptualmodel.svg?raw=true)
+![alt text](https://github.com/TitoLulu/Udacity-Data-Engineering-Nanodegree-Capstone-Project/blob/main/images/conceptual_model.svg?raw=true)
+
+# Run ETL 
+
+To run the ETL enter your AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY into capstone.cfg file. Then run the etl.py scrip to trigger spark job that processes and transforms the data into a combination of facts and dimension tables. Check for the output in your s3 data lake to confirm successful load. 
+
+# Clean Up Process
+
+The clean up process involves dropping duplicate rows, reading sas labels files to produce dimension tables for city and country codes, and finally checking for missing data on the temperature dataset. 
+
+# Ideal set up
+
+In a production environment I would inlude a workflow management tool such as airflow to schedule the frequency of DAGs jobs. Assuming it is batch pipeline I would schedule it on a daily to run at 12:00 AM UTC time so as to capture previous days activity data. I would also include redshift warehouse for warehousing allowing analysts to further perform their analysis by either directly querying views or doing that over a BI tool set on top of the warehouse
+
+# Reference
+[ref #1](https://sparkbyexamples.com/pyspark/pyspark-split-dataframe-column-into-multiple-columns/):**PySpark split() Column into Multiple Columns**
+
+[ref #2](https://changhsinlee.com/pyspark-udf/):**How to Turn Python Functions into PySpark Functions (UDF)**
+
+[ref #3](https://realpython.com/python-zip-function/):**ZIP Function**
 
 
 
