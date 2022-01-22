@@ -18,7 +18,7 @@ Build an Amazon S3 hosted data lake and ETL pipeline that loads data from S3, pr
 
 The conceptual data model is that of a star schema comprising a central fact table immigration_fact and auxiliary dimension  tables 
 
-![alt text](https://github.com/TitoLulu/Udacity-Data-Engineering-Nanodegree-Capstone-Project/images/conceptualmodel.svg?raw=true)
+![alt text](https://github.com/TitoLulu/Udacity-Data-Engineering-Nanodegree-Capstone-Project/images/conceptual_model.svg?raw=true)
 
 
 
