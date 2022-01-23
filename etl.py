@@ -6,6 +6,7 @@ from pyspark.sql.types import DateType, StringType
 import pandas as pd
 import os
 import configparser
+from data_quality_check import check_table_schema, check_empty_tables
 
 config = configparser.ConfigParser()
 config.read('capstone.cfg')
@@ -48,6 +49,19 @@ def check_missing_data(df):
     df3 = df.filter(df.Country =="united states of america")
     df3 = df.filter(df.Country == "us")
     return (True if not df3 else False)
+
+def check_unique_id_column(df, id_column):
+    """
+    Takes dataframe and confirms uniqueness of identity column
+    """
+    df = df.groupBy(f'{id_column}').count()
+    df.printSchema()
+    list = df.toPandas()['count'].unique()
+    for i in list:
+        if i > 1:
+            print("You have some duplicates in identity column value")
+        else: 
+            print("Table meets unique identity key check")
 
 def read_labels(file, first_row,last_row):
     frame = {}
@@ -100,10 +114,11 @@ def process_immigration_data(spark, input_data, output_data):
             "mode",
             "visatype",
         ]
-    ].dropDuplicates()
+    ].dropDuplicates(['cic_id'])
+
     # dimensions from immigration data
-    dim_flight_details = immigration_df.select([monotonically_increasing_id().alias('id'),'cic_id','flight_number','airline'])
-    dim_immigrants = immigration_df.select([monotonically_increasing_id().alias('id'),'cic_id','cit','res','visa','age','occupation','gender','address','INS_number'])
+    dim_flight_details = immigration_df.select([monotonically_increasing_id().alias('id'),'cic_id','flight_number','airline']).dropDuplicates()
+    dim_immigrants = immigration_df.select([monotonically_increasing_id().alias('id'),'cic_id','cit','res','visa','age','occupation','gender','address','INS_number']).dropDuplicates()
     # clean the dates
     udf_func = udf(sas_to_date,DateType())
     immigration_fact = immigration_fact.withColumn("arrival_date",udf_func("arrival_date"))
@@ -117,11 +132,13 @@ def process_immigration_data(spark, input_data, output_data):
             .withColumn('city', split(cities_df.city,',').getItem(0))
     cities_df = cities_df.select([monotonically_increasing_id().alias('id'),'*'])
     countries_df = countries_df.select([monotonically_increasing_id().alias('id'),'*'])
-    
+    # data quality check (unique identity column)
+    check_unique_id_column(immigration_fact,'cic_id')
+   
     # write results to S3
     countries_df.write.parquet(output_data + "dim_countries.parquet")
     cities_df.write.parquet(output_data + "dim_cities.parquet")
-    immigration_fact.write.parquet(output_data + "fact_immigration.parquet")
+    immigration_fact.write.mode('overwrite').parquet(output_data + "fact_immigration.parquet")
     dim_immigrants.write.parquet(output_data + "dim_immigrants.parquet")
     dim_flight_details.write.parquet(output_data + "dim_flight_details.parquet")
 
@@ -174,7 +191,11 @@ def process_airport_data(spark, input_data, output_data):
     airport_df = spark.read.csv(airport_data, header=True)
     airport_df = airport_df.filter(
         (airport_df.iso_country == "US") & ~(airport_df.type == "closed")
-    )
+    ).dropDuplicates()
+    
+    # data quality check (unique identity column)
+    check_unique_id_column(airport_df,'idents')
+    
     airport_dim = airport_df.select(["ident","type","name","continent","gps_code","iata_code","local_code","iso_country"]).dropDuplicates()
     airport_stats = airport_df.select(["ident", "elevation_ft", "coordinates"]).dropDuplicates()
 
@@ -208,6 +229,7 @@ def main():
     process_city_data(spark, output_data, input_data)
     process_airport_data(spark, output_data, input_data)
     process_temp_data(spark, output_data, input_data)
+
 
 
 if __name__ == "__main__":

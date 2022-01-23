@@ -22,7 +22,7 @@ def createsparksession():
 
     return spark
 
-def check_table_schema(output_path):
+def check_table_schema(spark,output_path):
     print(Path(output_path))
     output_path = Path(output_path)
     for file in output_path.iterdir():
@@ -31,7 +31,7 @@ def check_table_schema(output_path):
             print("Schema: " + df.split('/')[-1])
             df.printSchema()
                 
-def check_empty_tables(output_path):
+def check_empty_tables(spark,output_path):
     output_path = Path(output_path)
     for file in output_path.iterdir():
         if file.is_dir():
@@ -46,5 +46,5 @@ def check_empty_tables(output_path):
 if __name__ == '__main__':
     spark = createsparksession()
     output_path = ""
-    check_table_schema(output_path)
-    check_empty_tables(output_path)
+    check_table_schema(spark,output_path)
+    check_empty_tables(spark,output_path)
