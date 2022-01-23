@@ -230,7 +230,7 @@ def main():
     process_airport_data(spark, output_data, input_data)
     process_temp_data(spark, output_data, input_data)
     #run analysis on fact_immigration
-    spark.sql("select count(cic_id) as number_of_arrivals, month, year from fact_immigration").show()
+    #spark.sql("select count(cic_id) as number_of_arrivals, month, year from fact_immigration").show()
 
 
 
