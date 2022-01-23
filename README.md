@@ -16,7 +16,12 @@ Build an Amazon S3 hosted data lake and ETL pipeline that loads data from S3, pr
 
 # Conceptual Data Model 
 
-The conceptual data model is that of a star schema comprising a central fact table immigration_fact and auxiliary dimension  tables 
+The conceptual data model is that of a star schema comprising a central fact table immigration_fact and auxiliary dimension  tables. Star Schema has the following advantages 
+<ol>
+ <li>Fast aggregations</li>
+ <li>Simple queries</li>
+ <li>Denormalized</li>
+</ol>
 
 ![alt text](https://github.com/TitoLulu/Udacity-Data-Engineering-Nanodegree-Capstone-Project/blob/main/images/conceptual_model.svg?raw=true)
 
