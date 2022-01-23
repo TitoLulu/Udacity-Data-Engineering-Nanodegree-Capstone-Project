@@ -8,13 +8,15 @@ select
   count(cic_id) as "number of arrivals", 
   month, 
   year
-from fact_immigration
-group by month, year;
+from fact_immigration f
+join dim_immigrants di on (f.cic_id = di.cic_id)
+join dim_countries dc on (di.res = dc.code)
+group by year,month,country;
 ~~~~
 
 the result 
 
-![alt text](https://github.com/TitoLulu/Udacity-Data-Engineering-Nanodegree-Capstone-Project/blob/main/images/analysis_result.PNG?raw=true)
+![alt text](https://github.com/TitoLulu/Udacity-Data-Engineering-Nanodegree-Capstone-Project/blob/main/images/arrivals_partitioned_by_year_month_country.png?raw=true)
 
 # Approach 
 Build an Amazon S3 hosted data lake and ETL pipeline that loads data from S3, processes it using Spark and loads back to S3 the transformed data either as dimensional tables or fact tables.
