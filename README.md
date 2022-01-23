@@ -1,5 +1,20 @@
 # Udacity-Data-Engineering-Nanodegree-Capstone-Project
-The aim of this project is to build analytics tables comprising immigration data from the USA and enriched with other data sets such as airport codes, global land temperature and city demographics. Analysts can perfom analysis like checking the frequency of immigration from a particular country partitioned by month and year and country.
+The aim of this project is to build analytics tables comprising immigration data from the USA and enriched with other data sets such as airport codes, global land temperature and city demographics. Analysts can perfom analysis like checking the frequency of immigration partitioned by month and year.
+
+a sample query would be 
+
+~~~~ 
+select 
+  count(cic_id) as "number of arrivals", 
+  month, 
+  year
+from fact_immigration
+group by month, year;
+~~~~
+
+the result 
+
+![alt text](https://github.com/TitoLulu/Udacity-Data-Engineering-Nanodegree-Capstone-Project/blob/main/images/analysis_result.PNG?raw=true)
 
 # Approach 
 Build an Amazon S3 hosted data lake and ETL pipeline that loads data from S3, processes it using Spark and loads back to S3 the transformed data either as dimensional tables or fact tables.
