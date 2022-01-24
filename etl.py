@@ -230,7 +230,16 @@ def main():
     process_airport_data(spark, output_data, input_data)
     process_temp_data(spark, output_data, input_data)
     #run analysis on fact_immigration
-    #spark.sql("select count(cic_id) as number_of_arrivals, month, year from fact_immigration").show()
+    fact_path = os.path.join(output_data + 'fact_immigration.parquet')
+    imm_path = os.path.join(output_data + 'dim_immigrants.parquet')
+    countries_path = os.path.join(output_data + 'dim_countries.parquet')
+    immigrants = spark.read.parquet(imm_path).select(['cic_id', 'res'])
+    countries = spark.read.parquet(countries_path).select(['code','country']).withColumnRenamed("code","res")
+    countries_df = immigrants.join(countries, on="res", how='left')
+    fact_df = spark.read.parquet(fact_path).select(['cic_id','month', 'year'])
+    fact_df = fact_df.join(countries_df,on='cic_id', how='left')
+    analysis_df = fact_df.groupBy(['year','month','country']).count()
+    analysis_df.withColumnRenamed("count", "number_of_arrivals").show()
 
 
 
